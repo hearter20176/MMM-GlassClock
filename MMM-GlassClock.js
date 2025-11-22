@@ -58,7 +58,14 @@ Module.register("MMM-GlassClock", {
     this.rendered = false;
     this.lastRenderedDay = null;
     this.lottiePlayers = {};
+    this.tzWarned = false;
+    this.momentWithTz =
+      typeof moment === "function" && typeof moment.tz === "function"
+        ? moment
+        : null;
+    this.momentTzRequested = false;
 
+    this.ensureMomentTimezone();
     moment.locale(config.language || "en");
     this.scheduleTick();
   },
@@ -75,6 +82,61 @@ Module.register("MMM-GlassClock", {
   // ---------------------------------------------------------------------------
   // Core helpers
   // ---------------------------------------------------------------------------
+  ensureMomentTimezone() {
+    // If tz already exists, cache it and return.
+    if (typeof moment === "function" && typeof moment.tz === "function") {
+      this.momentWithTz = moment;
+      return;
+    }
+
+    // Attempt to inject the timezone build once if it's missing.
+    if (!this.momentTzRequested) {
+      this.momentTzRequested = true;
+      const script = document.createElement("script");
+      script.src = this.file(
+        "node_modules/moment-timezone/builds/moment-timezone-with-data.min.js"
+      );
+      script.onload = () => {
+        if (typeof moment === "function" && typeof moment.tz === "function") {
+          this.momentWithTz = moment;
+          this.tzWarned = false;
+        }
+      };
+      script.onerror = () => {
+        Log.error("[MMM-GlassClock] Failed to load moment-timezone build.");
+      };
+      document.body.appendChild(script);
+    }
+  },
+
+  getMomentLib() {
+    const globalMoment = typeof moment === "function" ? moment : null;
+
+    // If the current global moment already has timezone support, prefer it.
+    if (globalMoment && typeof globalMoment.tz === "function") {
+      this.momentWithTz = globalMoment;
+      return globalMoment;
+    }
+
+    // If timezone support was lost (because another module reloaded moment),
+    // fall back to the cached instance that still has moment-timezone attached.
+    if (
+      this.momentWithTz &&
+      typeof this.momentWithTz.tz === "function" &&
+      typeof this.momentWithTz === "function"
+    ) {
+      if (!this.tzWarned) {
+        Log.warn(
+          "[MMM-GlassClock] Restoring moment-timezone instance; another module reloaded moment without tz support."
+        );
+        this.tzWarned = true;
+      }
+      return this.momentWithTz;
+    }
+
+    return globalMoment;
+  },
+
   scheduleTick() {
     const current = this.getNow();
     this.now = current;
@@ -104,8 +166,56 @@ Module.register("MMM-GlassClock", {
   },
 
   getNow() {
+    const momentLib = this.getMomentLib();
+    if (!momentLib || typeof momentLib !== "function") {
+      Log.error("[MMM-GlassClock] moment is not available; falling back to Date().");
+      const nowDate = new Date();
+      const pad = (num) => String(num).padStart(2, "0");
+      return {
+        format: (fmt) => {
+          const hours24 = nowDate.getHours();
+          switch (fmt) {
+            case "YYYY-MM-DD":
+              return `${nowDate.getFullYear()}-${pad(
+                nowDate.getMonth() + 1
+              )}-${pad(nowDate.getDate())}`;
+            case "h":
+              return String(((hours24 + 11) % 12) + 1);
+            case "HH":
+              return pad(hours24);
+            case "mm":
+              return pad(nowDate.getMinutes());
+            case "ss":
+              return pad(nowDate.getSeconds());
+            case "A":
+              return hours24 >= 12 ? "PM" : "AM";
+            case "a":
+              return hours24 >= 12 ? "pm" : "am";
+            default:
+              return nowDate.toISOString();
+          }
+        },
+        milliseconds: () => nowDate.getMilliseconds(),
+        seconds: () => nowDate.getSeconds(),
+        toDate: () => nowDate
+      };
+    }
+
     const tz = this.config.timezone || this.config.timeZone || null;
-    return tz ? moment().tz(tz) : moment();
+    if (tz && typeof momentLib.tz !== "function") {
+      this.ensureMomentTimezone();
+      if (!this.tzWarned) {
+        Log.warn(
+          "[MMM-GlassClock] moment-timezone is missing; using local time instead of configured timezone."
+        );
+        this.tzWarned = true;
+      }
+      return momentLib();
+    }
+
+    return tz && typeof momentLib.tz === "function"
+      ? momentLib().tz(tz)
+      : momentLib();
   },
 
   getTimeFormat() {
@@ -183,7 +293,13 @@ Module.register("MMM-GlassClock", {
   formatMoment(dateObj) {
     if (!dateObj) return "--";
     const tz = this.config.timezone || this.config.timeZone || null;
-    const base = tz ? moment(dateObj).tz(tz) : moment(dateObj);
+    const momentLib = this.getMomentLib();
+    if (!momentLib || typeof momentLib !== "function") return "--";
+
+    const base =
+      tz && typeof momentLib.tz === "function"
+        ? momentLib(dateObj).tz(tz)
+        : momentLib(dateObj);
     const format =
       this.getTimeFormat() === 12
         ? `h:mm ${this.config.showPeriodUpper ? "A" : "a"}`
