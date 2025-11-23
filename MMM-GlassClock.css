@@ -23,13 +23,14 @@
     0 18px 50px rgba(0, 12, 48, 0.35),
     inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
-    radial-gradient(120% 120% at 12% 12%, rgba(134, 239, 255, 0.32), rgba(37, 99, 235, 0)),
-    radial-gradient(140% 140% at 88% 18%, rgba(224, 231, 255, 0.28), rgba(99, 102, 241, 0));
+    linear-gradient(145deg, #ffffff0f, #ffffff05),
+    radial-gradient(120% 120% at 12% 12%, #86efff52, #2563eb00),
+    radial-gradient(140% 140% at 88% 18%, #e0e7ff47, #6366f100);
   backdrop-filter: blur(22px) saturate(140%);
   -webkit-backdrop-filter: blur(22px) saturate(140%);
   overflow: hidden;
   color: #e9edf5;
+  gap: 0px 8px;
 }
 
 .glass-clock-card > * {
@@ -41,7 +42,7 @@
   content: "";
   position: absolute;
   inset: -20%;
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.35));
+  background: linear-gradient(120deg, #ffffff66, #ffffff0d, #ffffff59);
   transform: translateX(-60%) rotate(8deg);
   animation: glass-shimmer 16s linear infinite;
   opacity: 0.32;
@@ -56,8 +57,8 @@
   bottom: -120px;
   right: -60px;
   background:
-    radial-gradient(circle at 25% 30%, rgba(125, 211, 252, 0.65), rgba(14, 165, 233, 0.08)),
-    radial-gradient(circle at 80% 70%, rgba(129, 140, 248, 0.55), rgba(59, 130, 246, 0.1));
+    radial-gradient(circle at 25% 30%, #7dd3fca6, #0ea5e914),
+    radial-gradient(circle at 80% 70%, #818cf88c, #3b82f61a);
   filter: blur(32px);
   opacity: 0.45;
   pointer-events: none;
@@ -71,8 +72,8 @@
   gap: 6px;
   font-weight: 600;
   text-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.35),
-    0 0 12px rgba(0, 0, 0, 0.35);
+    0 6px 20px #00000059,
+    0 0 12px #00000059;
 }
 
 .clock-hours {
@@ -80,8 +81,8 @@
   line-height: 1;
   letter-spacing: 0.02em;
   text-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.45),
-    0 0 14px rgba(0, 0, 0, 0.35);
+    0 10px 24px #00000073,
+    0 0 14px #00000059;
 }
 
 .clock-separator,
@@ -90,8 +91,8 @@
   line-height: 1;
   letter-spacing: 0.015em;
   text-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.4),
-    0 0 12px rgba(0, 0, 0, 0.3);
+    0 8px 20px #00000066,
+    0 0 12px #0000004d;
 }
 
 .clock-seconds {
@@ -99,8 +100,8 @@
   margin-left: 2px;
   opacity: 0.85;
   text-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.35),
-    0 0 10px rgba(0, 0, 0, 0.3);
+    0 6px 16px #00000059,
+    0 0 10px #0000004d;
 }
 
 .clock-period {
@@ -115,7 +116,7 @@
   text-align: center;
   margin-top: 6px;
   font-size: 16px;
-  color: rgba(233, 237, 245, 0.82);
+  color: #e9edf5d1;
 }
 
 .glass-clock-meta {
@@ -136,11 +137,11 @@
   min-width: 130px;
   padding: 10px 12px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #ffffff14;
+  border: 1px solid #ffffff29;
   box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.2),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    0 10px 24px #00000033,
+    inset 0 0 0 1px #ffffff0d;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   display: flex;
@@ -152,7 +153,7 @@
   width: 38px;
   height: 38px;
   flex: 0 0 auto;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.25));
+  filter: drop-shadow(0 4px 12px #00000040);
 }
 
 .glass-chip-content {
@@ -162,13 +163,15 @@
 
 .glass-chip-label {
   font-size: 12px;
+  text-align: center;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(233, 237, 245, 0.7);
+  color: #e9edf5b3;
 }
 
 .glass-chip-value {
   font-size: 18px;
+  text-align: center;
   font-weight: 600;
   margin-top: 2px;
 }
