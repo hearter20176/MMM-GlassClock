@@ -38,7 +38,9 @@ Add the module to your `config.js`:
     showMoonTimes: true,
     latitude: 40.7128,        // required for sun/moon times
     longitude: -74.0060,
-    dateFormat: "dddd, MMMM Do"
+    dateFormat: "dddd, MMMM Do",
+    performanceProfile: "auto", // "auto" | "pi" | "full"
+    reduceMotion: false         // true disables lottie + seconds on Pi/reduced-motion
   }
 }
 ```
@@ -57,6 +59,8 @@ Add the module to your `config.js`:
 - `latitude` / `longitude`: Decimal degrees for solar/lunar times. Falls back to `lat`/`lon` keys if present.
 - `dateFormat`: Moment.js format string for the date. Default `dddd, MMMM Do`.
 - `animationSpeed`: Milliseconds for DOM update animation. Default `300`.
+- `performanceProfile`: `"auto"` detects Pi/ARM, `"pi"` forces low-frequency updates and disables heavy motion, `"full"` keeps all effects.
+- `reduceMotion`: Force low-motion mode (suppresses Lottie animations and seconds tick) even on non-Pi devices; also obeys system `prefers-reduced-motion`.
 
 ## Styling
 
