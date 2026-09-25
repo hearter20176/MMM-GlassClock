@@ -23,7 +23,9 @@ Module.register("MMM-GlassClock", {
     latitude: null,
     longitude: null,
     dateFormat: "dddd, MMMM Do",
-    animationSpeed: 300
+    animationSpeed: 300,
+    performanceProfile: "auto", // auto | pi | full
+    reduceMotion: false
   },
 
   // ---------------------------------------------------------------------------
@@ -64,6 +66,15 @@ Module.register("MMM-GlassClock", {
         ? moment
         : null;
     this.momentTzRequested = false;
+    this.performanceProfile = this.resolvePerformanceProfile();
+    this.reduceMotion =
+      this.config.reduceMotion === true ||
+      this.performanceProfile === "pi" ||
+      (typeof window !== "undefined" &&
+        window.matchMedia &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    this.renderSeconds = this.config.displaySeconds && !this.reduceMotion;
+    this.enableLottie = !this.reduceMotion;
 
     this.ensureMomentTimezone();
     moment.locale(config.language || "en");
@@ -157,7 +168,7 @@ Module.register("MMM-GlassClock", {
 
     const millis = current.milliseconds();
     const seconds = current.seconds();
-    const delay = this.config.displaySeconds
+    const delay = this.renderSeconds
       ? 1000 - millis + 25
       : (60 - seconds) * 1000 - millis + 25;
 
@@ -275,7 +286,7 @@ Module.register("MMM-GlassClock", {
       };
     }
 
-    const showSeconds = this.config.displaySeconds && this.config.showTime;
+    const showSeconds = this.renderSeconds && this.config.showTime;
     const use12 = this.getTimeFormat() === 12;
     const period =
       use12 && this.config.showPeriod
@@ -331,7 +342,7 @@ Module.register("MMM-GlassClock", {
   },
 
   loadLottie(container, animName) {
-    if (!container || !window.lottie) return;
+    if (!container || !window.lottie || !this.enableLottie) return;
 
     const key = `${this.identifier}-${animName}`;
     if (this.lottiePlayers[key]) {
@@ -354,7 +365,7 @@ Module.register("MMM-GlassClock", {
     const chip = document.createElement("div");
     chip.className = `glass-chip ${extraClass}`.trim();
 
-    if (animName) {
+    if (animName && this.enableLottie) {
       const icon = document.createElement("div");
       icon.className = "glass-chip-icon";
       chip.appendChild(icon);
@@ -537,5 +548,18 @@ Module.register("MMM-GlassClock", {
     }
 
     return wrapper;
+  },
+
+  resolvePerformanceProfile() {
+    const requested = (this.config.performanceProfile || "auto").toLowerCase();
+    if (requested === "pi" || requested === "full") return requested;
+    const ua =
+      typeof navigator !== "undefined" && navigator.userAgent ? navigator.userAgent : "";
+    const isPi =
+      ua.includes("raspberry") ||
+      ua.includes("armv7") ||
+      ua.includes("aarch64") ||
+      ua.includes("linux arm");
+    return isPi ? "pi" : "full";
   }
 });
