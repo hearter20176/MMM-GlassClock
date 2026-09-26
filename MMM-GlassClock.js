@@ -25,7 +25,11 @@ Module.register("MMM-GlassClock", {
     dateFormat: "dddd, MMMM Do",
     animationSpeed: 300,
     performanceProfile: "auto", // auto | pi | full
-    reduceMotion: false
+    reduceMotion: false,
+    // Mark <body> with mm-day / mm-night from sunrise/sunset so the page theme
+    // (css/custom.css) can switch palettes. themeOverride: "day" | "night" forces one.
+    themeClass: true,
+    themeOverride: null
   },
 
   // ---------------------------------------------------------------------------
@@ -154,6 +158,7 @@ Module.register("MMM-GlassClock", {
 
     const timeParts = this.formatClockTime(current);
     this.updateSunAndMoonTimes(current);
+    this.applyPageTheme(current);
 
     const dayKey = current.format("YYYY-MM-DD");
     const needsFullRender = !this.rendered || dayKey !== this.lastRenderedDay;
@@ -274,6 +279,23 @@ Module.register("MMM-GlassClock", {
       this.sunTimes = null;
       this.moonTimes = null;
     }
+  },
+
+  applyPageTheme(nowMoment) {
+    if (!this.config.themeClass || typeof document === "undefined" || !document.body) return;
+    let isDay;
+    const forced = this.config.themeOverride;
+    if (forced === "day" || forced === "night") {
+      isDay = forced === "day";
+    } else if (this.sunTimes && this.sunTimes.sunrise && this.sunTimes.sunset) {
+      const t = nowMoment.valueOf();
+      isDay = t >= this.sunTimes.sunrise.getTime() && t < this.sunTimes.sunset.getTime();
+    } else {
+      const hour = nowMoment.hours();
+      isDay = hour >= 7 && hour < 19;
+    }
+    document.body.classList.toggle("mm-day", isDay);
+    document.body.classList.toggle("mm-night", !isDay);
   },
 
   formatClockTime(nowMoment) {
