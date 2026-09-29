@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Liquid glass themed clock for MagicMirror matching MMM-AmbientWeather / MMM-MyAgenda / MMM-GlassCalendar.",
   "main": "MMM-GlassClock.js",
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "moment": "^2.30.1",
     "moment-timezone": "^0.5.45",

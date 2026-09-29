@@ -61,6 +61,20 @@ Add the module to your `config.js`:
 - `animationSpeed`: Milliseconds for DOM update animation. Default `300`.
 - `performanceProfile`: `"auto"` detects Pi/ARM, `"pi"` forces low-frequency updates and disables heavy motion, `"full"` keeps all effects.
 - `reduceMotion`: Force low-motion mode (suppresses Lottie animations and seconds tick) even on non-Pi devices; also obeys system `prefers-reduced-motion`.
+- `themeClass`: When `true` (default), marks `<body>` with `mm-day` / `mm-night` based on sunrise/sunset so `css/custom.css` (and any module that listens for it) can switch light/dark palettes. Sun times are computed for the current calendar date anchored at local noon, so the theme keeps updating correctly across midnight without needing a restart.
+- `themeOverride`: `"day"` or `"night"` to force the page theme regardless of sun times; `null` (default) uses the computed day/night state.
+
+## Page theme notification
+
+When `themeClass` is enabled, this module owns the page-wide day/night theme. It marks `<body>` with `mm-day` / `mm-night` and, on every actual day/night transition, broadcasts:
+
+```js
+this.sendNotification("PAGE_THEME_CHANGED", { mode: "day" | "night" });
+```
+
+At true module startup this notification reaches nobody: MagicMirror only starts dispatching notifications between modules once every module has registered, which happens after this module's own `start()` has already computed and applied the initial theme. To make sure late-registering listeners still learn the startup state, this module also re-sends `PAGE_THEME_CHANGED` (with whatever mode it already computed) upon receiving MagicMirror's own `ALL_MODULES_STARTED` notification.
+
+Other modules (e.g. MMM-GlassCalendar, MMM-GlassDailyCalendar) listen for this to keep their own `autoSun` theme in sync with `<body class="mm-day">` / `<body class="mm-night">` instead of independently re-deriving day/night from the clock hour.
 
 ## Styling
 

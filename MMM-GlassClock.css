@@ -44,7 +44,7 @@
   inset: -20%;
   background: linear-gradient(120deg, #ffffff66, #ffffff0d, #ffffff59);
   transform: translateX(-60%) rotate(8deg);
-  animation: glass-shimmer 16s linear infinite;
+  animation: glass-clock-shimmer 16s linear infinite;
   opacity: 0.32;
   pointer-events: none;
 }
@@ -62,7 +62,7 @@
   filter: blur(32px);
   opacity: 0.45;
   pointer-events: none;
-  animation: floatFade 18s ease-in-out infinite alternate;
+  animation: glass-clock-float 18s ease-in-out infinite alternate;
 }
 
 .glass-clock-time {
@@ -192,7 +192,7 @@
   opacity: 0.7;
 }
 
-@keyframes glass-shimmer {
+@keyframes glass-clock-shimmer {
   from {
     transform: translateX(-60%) rotate(8deg);
   }
@@ -201,7 +201,7 @@
   }
 }
 
-@keyframes floatFade {
+@keyframes glass-clock-float {
   from {
     transform: translateY(0);
     opacity: 0.45;

@@ -60,6 +60,7 @@ Module.register("MMM-GlassClock", {
     this.sunTimes = null;
     this.moonTimes = null;
     this.lastCalcDate = null;
+    this.lastThemeMode = null;
     this.tickTimer = null;
     this.rendered = false;
     this.lastRenderedDay = null;
@@ -270,7 +271,22 @@ Module.register("MMM-GlassClock", {
     }
 
     try {
-      const baseDate = currentMoment.toDate();
+      // Anchor the calculation at local noon of the current calendar date rather
+      // than "now". SunCalc.getTimes() returns the solar transit NEAREST the
+      // instant it's given; right after local midnight that instant is still
+      // close to the UTC day boundary and can resolve to YESTERDAY's transit
+      // (e.g. 00:00 EDT is 04:00 UTC). Anchoring at noon guarantees the transit
+      // used is the one for this date, regardless of UTC offset.
+      const baseDate =
+        typeof currentMoment.clone === "function"
+          ? currentMoment
+              .clone()
+              .hour(12)
+              .minute(0)
+              .second(0)
+              .millisecond(0)
+              .toDate()
+          : currentMoment.toDate();
       this.sunTimes = SunCalc.getTimes(baseDate, lat, lon);
       this.moonTimes = SunCalc.getMoonTimes(baseDate, lat, lon);
       this.lastCalcDate = dateKey;
@@ -288,14 +304,42 @@ Module.register("MMM-GlassClock", {
     if (forced === "day" || forced === "night") {
       isDay = forced === "day";
     } else if (this.sunTimes && this.sunTimes.sunrise && this.sunTimes.sunset) {
-      const t = nowMoment.valueOf();
+      // Use toDate()/getTime() rather than moment-only accessors (valueOf/hours)
+      // so this also works with the plain-Date fallback object getNow() returns
+      // when moment isn't available.
+      const t = nowMoment.toDate().getTime();
       isDay = t >= this.sunTimes.sunrise.getTime() && t < this.sunTimes.sunset.getTime();
     } else {
-      const hour = nowMoment.hours();
+      // Prefer the moment's own hour (honours config.timezone via moment-tz)
+      // over toDate().getHours(), which reports the SYSTEM-local hour. Only
+      // fall back to toDate().getHours() for the plain-Date fallback object
+      // getNow() returns when moment itself isn't available.
+      const hour =
+        typeof nowMoment.hours === "function"
+          ? nowMoment.hours()
+          : nowMoment.toDate().getHours();
       isDay = hour >= 7 && hour < 19;
     }
+
+    const mode = isDay ? "day" : "night";
+    if (this.lastThemeMode === mode) return;
+    this.lastThemeMode = mode;
+
     document.body.classList.toggle("mm-day", isDay);
     document.body.classList.toggle("mm-night", !isDay);
+    this.sendNotification("PAGE_THEME_CHANGED", { mode });
+  },
+
+  notificationReceived(notification) {
+    // MagicMirror's `modules` list is still empty while start() runs (it's
+    // only populated once all modules are registered), so the very first
+    // applyPageTheme() call in start()/scheduleTick() broadcasts to nobody.
+    // Re-send the already-computed theme once every module is listening.
+    if (notification === "ALL_MODULES_STARTED") {
+      if (this.lastThemeMode) {
+        this.sendNotification("PAGE_THEME_CHANGED", { mode: this.lastThemeMode });
+      }
+    }
   },
 
   formatClockTime(nowMoment) {
@@ -485,10 +529,6 @@ Module.register("MMM-GlassClock", {
   // ---------------------------------------------------------------------------
   // DOM
   // ---------------------------------------------------------------------------
-  getRootNode() {
-    return document.getElementById(`glass-clock-${this.identifier}`);
-  },
-
   updateSecondsDom(timeParts) {
     const root = this.getRootNode();
     if (!root) return;
