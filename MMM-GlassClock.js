@@ -26,6 +26,10 @@ Module.register("MMM-GlassClock", {
     animationSpeed: 300,
     performanceProfile: "auto", // auto | pi | full
     reduceMotion: false,
+    // Sun/moon chip icons: "auto" | "loop" | "once" | "static".
+    // auto = "once" on the pi profile, "loop" on full. reduceMotion forces "static".
+    // Independent of displaySeconds: the ticking seconds are never affected.
+    iconAnimation: "auto",
     // Mark <body> with mm-day / mm-night from sunrise/sunset so the page theme
     // (css/custom.css) can switch palettes. themeOverride: "day" | "night" forces one.
     themeClass: true,
@@ -64,7 +68,11 @@ Module.register("MMM-GlassClock", {
     this.tickTimer = null;
     this.rendered = false;
     this.lastRenderedDay = null;
-    this.lottiePlayers = {};
+    this.lottieInstances = [];
+    this.pendingAnims = [];
+    this.renderGen = 0;
+    this.animTimer = null;
+    this.suspended = false;
     this.tzWarned = false;
     this.momentWithTz =
       typeof moment === "function" && typeof moment.tz === "function"
@@ -72,14 +80,20 @@ Module.register("MMM-GlassClock", {
         : null;
     this.momentTzRequested = false;
     this.performanceProfile = this.resolvePerformanceProfile();
+    // reduceMotion only affects decorative icon animation; a ticking digit is
+    // not decorative motion, so seconds depend solely on displaySeconds/showTime.
     this.reduceMotion =
       this.config.reduceMotion === true ||
-      this.performanceProfile === "pi" ||
-      (typeof window !== "undefined" &&
+      !!(
+        typeof window !== "undefined" &&
         window.matchMedia &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-    this.renderSeconds = this.config.displaySeconds && !this.reduceMotion;
-    this.enableLottie = !this.reduceMotion;
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      );
+    this.renderSeconds = !!(this.config.displaySeconds && this.config.showTime);
+    this.iconAnimation = this.resolveIconAnimation();
+    // "static" still draws one Lottie frame (no non-Lottie fallback exists),
+    // so the Lottie library is used in every mode.
+    this.enableLottie = true;
 
     this.ensureMomentTimezone();
     moment.locale(config.language || "en");
@@ -89,9 +103,13 @@ Module.register("MMM-GlassClock", {
   suspend() {
     clearTimeout(this.tickTimer);
     this.tickTimer = null;
+    this.suspended = true;
+    this._pauseAnimations();
   },
 
   resume() {
+    this.suspended = false;
+    this._startAnimations();
     this.scheduleTick();
   },
 
@@ -331,6 +349,13 @@ Module.register("MMM-GlassClock", {
   },
 
   notificationReceived(notification) {
+    // MagicMirror sends this after every updateDom() resolves (swapped or skipped):
+    // the deterministic moment to reap the outgoing tree and bind the new containers.
+    // MODULE_DOM_CREATED announces the very first render.
+    if (notification === "MODULE_DOM_UPDATED" || notification === "MODULE_DOM_CREATED") {
+      this._startAnimations();
+    }
+
     // MagicMirror's `modules` list is still empty while start() runs (it's
     // only populated once all modules are registered), so the very first
     // applyPageTheme() call in start()/scheduleTick() broadcasts to nobody.
@@ -407,24 +432,138 @@ Module.register("MMM-GlassClock", {
     }
   },
 
-  loadLottie(container, animName) {
-    if (!container || !window.lottie || !this.enableLottie) return;
+  // ---- Lottie lifecycle -----------------------------------------------------
+  //
+  // getDom() builds a brand-new tree on every render while MagicMirror keeps the
+  // previous tree attached for the fade-out, and may skip the swap entirely when
+  // the markup is unchanged. So players are NOT destroyed in getDom(): they keep
+  // running on the visible tree until their container is detached, at which point
+  // _startAnimations() reaps them. Each render registers the exact container
+  // elements it created (this.pendingAnims); a player is created only once such a
+  // container is connected, at most one per container. renderGen invalidates the
+  // fallback poll from older renders. this.lottieInstances holds { player,
+  // container } for every live player.
 
-    const key = `${this.identifier}-${animName}`;
-    if (this.lottiePlayers[key]) {
-      this.lottiePlayers[key].destroy();
-      delete this.lottiePlayers[key];
+  _clearAnimTimer() {
+    if (this.animTimer) {
+      clearTimeout(this.animTimer);
+      this.animTimer = null;
     }
+  },
 
-    const player = window.lottie.loadAnimation({
-      container,
-      renderer: "svg",
-      loop: true,
-      autoplay: true,
-      path: this.file(`animations/${animName}.json`)
+  _destroyPlayer(entry) {
+    try {
+      entry.player.destroy();
+    } catch (error) {
+      Log.warn(`[MMM-GlassClock] Failed to destroy Lottie player: ${error}`);
+    }
+  },
+
+  // Destroys players whose container is no longer in the document.
+  _reapDetachedAnimations() {
+    this.lottieInstances = (this.lottieInstances || []).filter((entry) => {
+      if (entry.container.isConnected) return true;
+      this._destroyPlayer(entry);
+      return false;
     });
+  },
 
-    this.lottiePlayers[key] = player;
+  // Starts a new render generation; live players are left alone.
+  _beginRender() {
+    this.renderGen = (this.renderGen || 0) + 1;
+    this._clearAnimTimer();
+    this.pendingAnims = [];
+  },
+
+  _registerAnimation(container, animName) {
+    if (!this.enableLottie || !animName || !container) return;
+    this.pendingAnims.push({ container, file: animName, player: null });
+  },
+
+  // "loop" always plays, "once" only if it has not finished, "static" never.
+  _playLive() {
+    if (this.iconAnimation === "static") return;
+    (this.lottieInstances || []).forEach((entry) => {
+      const player = entry.player;
+      if (player.glassDone) return;
+      if (typeof player.play === "function") player.play();
+    });
+  },
+
+  _pauseAnimations() {
+    this._clearAnimTimer();
+    (this.lottieInstances || []).forEach((entry) => {
+      if (typeof entry.player.pause === "function") entry.player.pause();
+    });
+  },
+
+  // Creates players for registered containers that are now attached and reaps
+  // players on detached containers. Containers not attached yet (new tree waiting
+  // for the old one to fade out) are retried on a short bounded poll.
+  _startAnimations(attempts = 50) {
+    this._clearAnimTimer();
+    if (!this.enableLottie) return;
+    this._reapDetachedAnimations();
+    // MM sets hidden=false when a show starts but calls resume() only after the
+    // fade; a module MM reports visible is not suspended.
+    if (this.suspended && this.hidden === false) this.suspended = false;
+    if (this.suspended) return;
+    if (typeof window === "undefined" || !window.lottie) return;
+
+    const gen = this.renderGen;
+    const mode = this.iconAnimation;
+    let waiting = false;
+    this.pendingAnims.forEach((item) => {
+      if (item.player) return;
+      if (!item.container.isConnected) {
+        waiting = true;
+        return;
+      }
+      let player;
+      try {
+        player = window.lottie.loadAnimation({
+          container: item.container,
+          renderer: "svg",
+          loop: mode === "loop",
+          autoplay: mode !== "static",
+          path: this.file(`animations/${item.file}.json`)
+        });
+      } catch (error) {
+        Log.warn(`[MMM-GlassClock] Failed to start Lottie animation ${item.file}: ${error}`);
+        item.player = { destroy() {}, play() {}, pause() {} }; // do not retry
+        return;
+      }
+      if (mode === "static" && typeof player.addEventListener === "function") {
+        // Draw one frame (the last) without starting playback.
+        player.addEventListener("DOMLoaded", () => {
+          player.goToAndStop(Math.max(0, Math.floor(player.totalFrames) - 1), true);
+        });
+      }
+      if (mode === "once" && typeof player.addEventListener === "function") {
+        player.addEventListener("complete", () => {
+          player.glassDone = true;
+        });
+      }
+      item.player = player;
+      this.lottieInstances.push({ player, container: item.container });
+    });
+    this._playLive();
+
+    // Players from a previous render still attached are reaped once swapped out.
+    const staleLeft = this.lottieInstances.some(
+      (entry) => !this.pendingAnims.some((item) => item.player === entry.player)
+    );
+    if ((waiting || staleLeft) && attempts > 0) {
+      this.animTimer = setTimeout(() => {
+        this.animTimer = null;
+        if (gen !== this.renderGen) return;
+        this._startAnimations(attempts - 1);
+      }, 100);
+    } else if (waiting && !this.lottieInstances.length && this.gaveUpGen !== gen) {
+      // Not a failure while the previous tree is still live with players (skipped swap).
+      this.gaveUpGen = gen;
+      Log.warn("[MMM-GlassClock] Gave up waiting for icon containers to attach");
+    }
   },
 
   buildChip(label, value, extraClass = "", animName = null) {
@@ -435,7 +574,7 @@ Module.register("MMM-GlassClock", {
       const icon = document.createElement("div");
       icon.className = "glass-chip-icon";
       chip.appendChild(icon);
-      this.loadLottie(icon, animName);
+      this._registerAnimation(icon, animName);
     }
 
     const content = document.createElement("div");
@@ -539,6 +678,8 @@ Module.register("MMM-GlassClock", {
   },
 
   getDom() {
+    this._beginRender();
+
     const wrapper = document.createElement("div");
     wrapper.className = "MMM-GlassClock";
     wrapper.id = `glass-clock-${this.identifier}`;
@@ -609,7 +750,20 @@ Module.register("MMM-GlassClock", {
       card.appendChild(metaContainer);
     }
 
+    // The tree is not attached yet; this arms the bounded poll so players bind
+    // once it is, regardless of which DOM notification (if any) arrives.
+    this._startAnimations();
+
     return wrapper;
+  },
+
+  resolveIconAnimation() {
+    if (this.reduceMotion) return "static";
+    const requested = String(this.config.iconAnimation || "auto").toLowerCase();
+    if (requested === "loop" || requested === "once" || requested === "static") {
+      return requested;
+    }
+    return this.performanceProfile === "pi" ? "once" : "loop";
   },
 
   resolvePerformanceProfile() {

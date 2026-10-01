@@ -40,7 +40,8 @@ Add the module to your `config.js`:
     longitude: -74.0060,
     dateFormat: "dddd, MMMM Do",
     performanceProfile: "auto", // "auto" | "pi" | "full"
-    reduceMotion: false         // true disables lottie + seconds on Pi/reduced-motion
+    reduceMotion: false,        // true forces iconAnimation "static" (seconds unaffected)
+    iconAnimation: "auto"       // "auto" | "loop" | "once" | "static"
   }
 }
 ```
@@ -49,7 +50,7 @@ Add the module to your `config.js`:
 
 - `timeformat`: `12` or `24` hour clock. Default follows MagicMirror `config.timeFormat`.
 - `timezone`: IANA timezone string (uses `moment-timezone`). `null` = system time.
-- `displaySeconds`: Show seconds beside the minutes. Default `true`.
+- `displaySeconds`: Show seconds beside the minutes. Default `true`. Independent of performance settings.
 - `showPeriod`: Show AM/PM when using 12-hour time. Default `true`.
 - `showPeriodUpper`: Uppercase AM/PM. Default `false`.
 - `showTime`: Toggle the time row. Default `true`.
@@ -59,10 +60,13 @@ Add the module to your `config.js`:
 - `latitude` / `longitude`: Decimal degrees for solar/lunar times. Falls back to `lat`/`lon` keys if present.
 - `dateFormat`: Moment.js format string for the date. Default `dddd, MMMM Do`.
 - `animationSpeed`: Milliseconds for DOM update animation. Default `300`.
-- `performanceProfile`: `"auto"` detects Pi/ARM, `"pi"` forces low-frequency updates and disables heavy motion, `"full"` keeps all effects.
-- `reduceMotion`: Force low-motion mode (suppresses Lottie animations and seconds tick) even on non-Pi devices; also obeys system `prefers-reduced-motion`.
+- `performanceProfile`: `"auto"` detects Pi/ARM (resolves to `"pi"`), `"pi"` or `"full"` forces a profile. The profile only chooses the default `iconAnimation`; it never affects the clock digits or seconds.
+- `iconAnimation`: How the sun/moon chip icons animate. `"loop"` plays forever, `"once"` plays one pass on each render then holds the last frame (no ongoing per-frame work), `"static"` draws a single frame and never plays. `"auto"` (default) picks `"once"` on the `pi` profile and `"loop"` on `full`.
+- `reduceMotion`: Forces `iconAnimation` to `"static"` (also when the system `prefers-reduced-motion` is set). It does not hide the seconds.
 - `themeClass`: When `true` (default), marks `<body>` with `mm-day` / `mm-night` based on sunrise/sunset so `css/custom.css` (and any module that listens for it) can switch light/dark palettes. Sun times are computed for the current calendar date anchored at local noon, so the theme keeps updating correctly across midnight without needing a restart.
 - `themeOverride`: `"day"` or `"night"` to force the page theme regardless of sun times; `null` (default) uses the computed day/night state.
+
+Seconds are controlled only by `displaySeconds` (and `showTime`), independent of `performanceProfile`, `reduceMotion`, and `iconAnimation`. Icon players are bound to the exact containers of the rendered tree and destroyed once that tree is swapped out (day rollover re-render), so they never leak or run off-screen. They are paused in `suspend()` and resumed in `resume()` if the module is ever hidden.
 
 ## Page theme notification
 
