@@ -2,6 +2,12 @@
 
 Liquid-glass clock module that matches the aesthetic of MMM-AmbientWeather, MMM-MyAgenda, MMM-GlassCalendar, and MMM-GlassDailyCalendar. Shows time/date plus optional sun/moon rise/set chips with bundled Lottie animations.
 
+## Screenshot
+
+![MMM-GlassClock in the night theme](docs/screenshot.png)
+
+*12-hour time with seconds, the date, and sunrise/sunset and moonrise/moonset chips (night theme). Moonrise shows "--" on days the moon does not rise.*
+
 ## Features
 
 - Glass card styling with shimmer, glow shadows behind the digits, and the shared glass palette.
@@ -13,7 +19,7 @@ Liquid-glass clock module that matches the aesthetic of MMM-AmbientWeather, MMM-
 
 ```bash
 cd ~/MagicMirror/modules
-git clone https://github.com/your-repo/MMM-GlassClock.git  # or copy this folder into modules/
+git clone https://github.com/hearter20176/MMM-GlassClock.git
 cd MMM-GlassClock
 npm install
 ```
