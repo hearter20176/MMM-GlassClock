@@ -89,3 +89,7 @@ Other modules (e.g. MMM-GlassCalendar, MMM-GlassDailyCalendar) listen for this t
 ## Styling
 
 `MMM-GlassClock.css` carries the gradients, blurs, shimmer, and shadow treatments used in the companion glass modules. Adjust widths, font sizes, or accent colors there if you need a custom fit.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
