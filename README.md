@@ -24,6 +24,16 @@ cd MMM-GlassClock
 npm install
 ```
 
+## Update
+
+```bash
+cd ~/MagicMirror/modules/MMM-GlassClock
+git pull
+npm install --omit=dev
+```
+
+Then restart MagicMirror (for example `pm2 restart MagicMirror`).
+
 ## Configuration
 
 Add the module to your `config.js`:
@@ -49,7 +59,7 @@ Add the module to your `config.js`:
     reduceMotion: false,        // true forces iconAnimation "static" (seconds unaffected)
     iconAnimation: "auto"       // "auto" | "loop" | "once" | "static"
   }
-}
+},
 ```
 
 ### Options
