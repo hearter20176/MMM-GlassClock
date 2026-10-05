@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ESLint (flat config) with an `npm run lint` script.
 - Added CHANGELOG, CODE_OF_CONDUCT and a Dependabot configuration.
 
+### Changed
+
+- ESLint 10, with `defineConfig` in `eslint.config.mjs`; `npm run lint` runs `eslint` without the trailing `.`.
+- Updated `moment` to 2.31 and `moment-timezone` to 0.6. `suncalc` stays on 1.9: 2.x no longer ships the `suncalc.js` browser file this module loads.
+
 ## [1.0.0]
 
 Released before this changelog was started. Commit history, newest first:
