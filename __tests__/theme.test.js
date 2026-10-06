@@ -46,6 +46,7 @@ const makeContext = (overrides = {}) =>
   Object.assign(
     {
       config: { latitude: LAT, longitude: LON, themeClass: true, themeOverride: null },
+      sunCalc: global.SunCalc,
       sunTimes: null,
       moonTimes: null,
       lastCalcDate: null,
@@ -180,4 +181,21 @@ test("updateSunAndMoonTimes: plain-Date fallback (no clone) does not throw", () 
   const fallbackNow = makeFallbackNow(new Date(2026, 8, 28, 0, 0, 30));
   assert.doesNotThrow(() => mod.updateSunAndMoonTimes.call(ctx, fallbackNow));
   assert.ok(ctx.sunTimes);
+});
+
+test("updateSunAndMoonTimes: moonrise is the one on the clock's local day, not the UTC day's", () => {
+  // 2026-10-02 in New York: the Moon rises at 22:40 EDT (02:40Z on Oct 3). Scanning the UTC
+  // day instead would report the previous evening's moonrise (Oct 1, 21:36 EDT).
+  const ctx = makeContext();
+  mod.updateSunAndMoonTimes.call(ctx, moment.tz("2026-10-02 08:00", TZ));
+  assert.ok(ctx.moonTimes && ctx.moonTimes.rise, "expected a moonrise");
+  assert.equal(moment(ctx.moonTimes.rise).tz(TZ).format("YYYY-MM-DD HH:mm"), "2026-10-02 22:40");
+  assert.equal(moment(ctx.sunTimes.sunrise).tz(TZ).format("YYYY-MM-DD"), "2026-10-02");
+});
+
+test("updateSunAndMoonTimes: waits for suncalc to load instead of caching an empty result", () => {
+  const ctx = makeContext({ sunCalc: null });
+  mod.updateSunAndMoonTimes.call(ctx, moment.tz("2026-10-02 08:00", TZ));
+  assert.equal(ctx.sunTimes, null);
+  assert.equal(ctx.lastCalcDate, null);
 });

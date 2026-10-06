@@ -17,7 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - ESLint 10, with `defineConfig` in `eslint.config.mjs`; `npm run lint` runs `eslint` without the trailing `.`.
-- Updated `moment` to 2.31 and `moment-timezone` to 0.6. `suncalc` stays on 1.9: 2.x no longer ships the `suncalc.js` browser file this module loads.
+- Updated `moment` to 2.31 and `moment-timezone` to 0.6.
+- Updated `suncalc` to 2.1. It ships only an ES module, so the module loads it with `import()` instead of `getScripts()`, and passes the clock's UTC offset so moonrise/moonset are for the local day. Sun and moon times now match a high-precision ephemeris to within seconds; 1.9 was off by up to 16 minutes for the moon.
+- Lottie is the `lottie-web` npm package (pinned to 5.10.2, the same build) instead of a copy in `vendor/`.
+- `package.json`: lowercase package name and `"type": "commonjs"`.
+- ESLint reports unused catch bindings and arguments, and lints `package.json`, as modules.magicmirror.builders does.
 
 ## [1.0.0]
 

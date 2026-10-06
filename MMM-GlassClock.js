@@ -45,8 +45,7 @@ Module.register("MMM-GlassClock", {
       this.file(
         "node_modules/moment-timezone/builds/moment-timezone-with-data.min.js"
       ),
-      this.file("vendor/lottie.min.js"),
-      this.file("node_modules/suncalc/suncalc.js")
+      this.file("node_modules/lottie-web/build/player/lottie.min.js")
     ];
   },
 
@@ -95,9 +94,29 @@ Module.register("MMM-GlassClock", {
     // so the Lottie library is used in every mode.
     this.enableLottie = true;
 
+    // suncalc 2 ships only an ES module and a .cjs build, neither of which
+    // getScripts() can load, so it is imported here (tests provide SunCalc).
+    this.sunCalc = typeof SunCalc !== "undefined" ? SunCalc : null;
+    if (!this.sunCalc) this.loadSunCalc();
+
     this.ensureMomentTimezone();
     moment.locale(config.language || "en");
     this.scheduleTick();
+  },
+
+  loadSunCalc() {
+    const url = new URL(this.file("node_modules/suncalc/index.js"), document.baseURI).href;
+    import(url)
+      .then((lib) => {
+        this.sunCalc = lib;
+        // recompute and redraw the sun/moon chips now rather than at midnight
+        this.lastCalcDate = null;
+        this.rendered = false;
+        if (!this.suspended) this.scheduleTick();
+      })
+      .catch((error) => {
+        Log.error(`[MMM-GlassClock] Failed to load suncalc: ${error}`);
+      });
   },
 
   suspend() {
@@ -284,7 +303,7 @@ Module.register("MMM-GlassClock", {
       return;
     }
 
-    if (this.lastCalcDate === dateKey) {
+    if (!this.sunCalc || this.lastCalcDate === dateKey) {
       return;
     }
 
@@ -305,8 +324,14 @@ Module.register("MMM-GlassClock", {
               .millisecond(0)
               .toDate()
           : currentMoment.toDate();
-      this.sunTimes = SunCalc.getTimes(baseDate, lat, lon);
-      this.moonTimes = SunCalc.getMoonTimes(baseDate, lat, lon);
+      // utcOffset (minutes) makes suncalc use the clock's local civil day;
+      // without it getMoonTimes() would scan the solar day instead.
+      const utcOffset =
+        typeof currentMoment.utcOffset === "function"
+          ? currentMoment.utcOffset()
+          : -currentMoment.toDate().getTimezoneOffset();
+      this.sunTimes = this.sunCalc.getTimes(baseDate, lat, lon, 0, utcOffset);
+      this.moonTimes = this.sunCalc.getMoonTimes(baseDate, lat, lon, utcOffset);
       this.lastCalcDate = dateKey;
     } catch (error) {
       Log.error(`[MMM-GlassClock] Failed to calculate sun/moon times: ${error}`);
