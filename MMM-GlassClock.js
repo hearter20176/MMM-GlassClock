@@ -4,7 +4,7 @@
  * Matches the aesthetic of MMM-AmbientWeather, MMM-MyAgenda, MMM-GlassCalendar, and MMM-GlassDailyCalendar.
  */
 
-/* global Module, Log, moment, SunCalc, config */
+/* global Module, Log, moment, SunCalc, config, vendor */
 
 Module.register("MMM-GlassClock", {
   // ---------------------------------------------------------------------------
@@ -41,10 +41,10 @@ Module.register("MMM-GlassClock", {
   // ---------------------------------------------------------------------------
   getScripts() {
     return [
-      this.file("node_modules/moment/min/moment-with-locales.min.js"),
-      this.file(
-        "node_modules/moment-timezone/builds/moment-timezone-with-data.min.js"
-      ),
+      // MagicMirror's shared moment and moment-timezone; the loader loads each
+      // once, so no other module can replace them with a copy lacking tz.
+      "moment.js",
+      "moment-timezone.js",
       this.file("node_modules/lottie-web/build/player/lottie.min.js")
     ];
   },
@@ -146,9 +146,11 @@ Module.register("MMM-GlassClock", {
     if (!this.momentTzRequested) {
       this.momentTzRequested = true;
       const script = document.createElement("script");
-      script.src = this.file(
-        "node_modules/moment-timezone/builds/moment-timezone-with-data.min.js"
-      );
+      // MagicMirror's own moment-timezone build (js/vendor.js)
+      script.src =
+        typeof vendor !== "undefined" && vendor["moment-timezone.js"]
+          ? vendor["moment-timezone.js"]
+          : "node_modules/moment-timezone/builds/moment-timezone-with-data.js";
       script.onload = () => {
         if (typeof moment === "function" && typeof moment.tz === "function") {
           this.momentWithTz = moment;
