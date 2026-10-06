@@ -4,7 +4,7 @@
  * Matches the aesthetic of MMM-AmbientWeather, MMM-MyAgenda, MMM-GlassCalendar, and MMM-GlassDailyCalendar.
  */
 
-/* global Module, Log, moment, SunCalc, config, vendor */
+/* global Module, Log, moment, SunCalc, config, vendor, lottie */
 
 Module.register("MMM-GlassClock", {
   // ---------------------------------------------------------------------------
@@ -40,13 +40,19 @@ Module.register("MMM-GlassClock", {
   // Assets
   // ---------------------------------------------------------------------------
   getScripts() {
-    return [
+    const scripts = [
       // MagicMirror's shared moment and moment-timezone; the loader loads each
       // once, so no other module can replace them with a copy lacking tz.
       "moment.js",
-      "moment-timezone.js",
-      this.file("node_modules/lottie-web/build/player/lottie.min.js")
+      "moment-timezone.js"
     ];
+    // Lottie is shared with the other Glass modules (all pin lottie-web 5.10.2).
+    // MagicMirror loads each module's scripts before asking the next for its
+    // list, so skip it when an earlier module already provided the global.
+    if (typeof lottie === "undefined") {
+      scripts.push(this.file("node_modules/lottie-web/build/player/lottie.min.js"));
+    }
+    return scripts;
   },
 
   getStyles() {
