@@ -12,6 +12,7 @@ Module.register("MMM-GlassClock", {
   // ---------------------------------------------------------------------------
   defaults: {
     timeformat: config.timeFormat || 24,
+    language: config.language,
     timezone: config.timezone || null,
     displaySeconds: true,
     showPeriod: true,
@@ -58,12 +59,23 @@ Module.register("MMM-GlassClock", {
   getStyles() {
     return ["MMM-GlassClock.css"];
   },
+  // Define required translations.
+  getTranslations: function() {
+    return {
+        'en': 'translations/en.json',
+        'fr': 'translations/fr.json'
+    };
+  },
 
   // ---------------------------------------------------------------------------
   // Lifecycle
   // ---------------------------------------------------------------------------
   start() {
     Log.info(`Starting module: ${this.name}`);
+
+    // set locale
+    moment.locale(this.config.language);
+
 
     this.now = null;
     this.sunTimes = null;
@@ -638,21 +650,20 @@ Module.register("MMM-GlassClock", {
       );
       return container;
     }
-
     container.appendChild(
       this.buildChip(
-        "Sunrise",
+        this.translate("SUNRISE"),
         this.formatMoment(this.sunTimes.sunrise),
-        "sunrise",
-        "sunrise"
+        "sunrise", //css
+        "sunrise" //icon
       )
     );
     container.appendChild(
       this.buildChip(
-        "Sunset",
+        this.translate("SUNSET"),
         this.formatMoment(this.sunTimes.sunset),
-        "sunset",
-        "sunset"
+        "sunset", //css
+        "sunset"  //icon
       )
     );
     return container;
@@ -681,18 +692,18 @@ Module.register("MMM-GlassClock", {
 
     container.appendChild(
       this.buildChip(
-        "Moonrise",
+        this.translate("MOONRISE"),
         this.formatMoment(this.moonTimes.rise),
-        "moon",
-        "moonrise"
+        "moon", //css
+        "moonrise" //icon
       )
     );
     container.appendChild(
       this.buildChip(
-        "Moonset",
+        this.translate("MOONSET"),
         this.formatMoment(this.moonTimes.set),
-        "moon",
-        "moonset"
+        "moon", //css
+        "moonset" //icon
       )
     );
     return container;
